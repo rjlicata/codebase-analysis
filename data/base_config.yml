@@ -1,5 +1,5 @@
 codebase:
-  path: /Users/rjlicata/Desktop/coding-projects/codebase-analysis/llm-sheet-analysis
+  path: /workspace/codebase-analysis/llm-sheet-analysis
 llm:
   model_name: llama3.2
   endpoint_url: http://localhost:11434/v1
