@@ -1,2 +1,2 @@
 # codebase-analysis
-Tool to analyze codebases using graph dbs, embedding models, and LLMs
+Tool to analyze codebases using PostgreSQL, embedding models, and LLMs
