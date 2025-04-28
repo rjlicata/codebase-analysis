@@ -1,10 +1,8 @@
 codebase:
-  path: /workspace/codebase-analysis/llm-sheet-analysis
+  path: /coding-projects/llm-sheet-analysis
 llm:
   model_name: llama3.2
-  endpoint_url: http://localhost:11434/v1
+  endpoint_url: http://host.docker.internal:11434/v1
 embeddings:
-  model_name: empty # TEI server + OpenAI API just needs any string
-  endpoint_url: http://localhost:8080/v1
-graph:
-  endpoint_url: 
+  model_name: bge-large # TEI server + OpenAI API just needs any string (Ollama needs a model name)
+  endpoint_url: http://host.docker.internal:11434/v1

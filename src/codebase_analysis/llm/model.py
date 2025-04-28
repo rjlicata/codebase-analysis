@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from openai import OpenAI
 
@@ -26,22 +26,20 @@ class ModelHandler:
     ):
         """initializes ModelHandler
 
-        :param model_name: model name, defaults to "llama3.2"
-        :type model_name: str, optional
-        :param endpoint_url: model endpoint URL, defaults to "http://localhost:11434/v1"
-        :type endpoint_url: str, optional
+        :param config: model config
+        :type config: Dict[str, Any]
         :param system_message: system message for the LLM, defaults to BASIC_SYSTEM_MESSAGE
         :type system_message: str, optional
         :param temperature: generation temperature for the model, defaults to 0.7
         :type temperature: float, optional
         """
-        if "/v1" not in config["llm"]["endpoint_url"]:
-            config["llm"]["endpoint_url"] += "/v1"
+        if "/v1" not in config["endpoint_url"]:
+            config["endpoint_url"] += "/v1"
         self._client = OpenAI(
-            base_url=config["llm"]["endpoint_url"],
+            base_url=config["endpoint_url"],
             api_key="EMPTY",
         )
-        self._model_name = config["llm"]["model_name"]
+        self._model_name = config["model_name"]
         self._system_message = system_message
         self._temperature = temperature
         self.clear_messages()
@@ -97,5 +95,41 @@ class ModelHandler:
                 "role": "assistant",
                 "content": response,
             },
+        )
+        return response
+
+
+class Embeddings:
+    """handles embedding generation TEI endpoint"""
+
+    def __init__(self, config: Dict[str, Any]):
+        """initializes Embeddings
+
+        :param config: embedding model config
+        :type config: Dict[str, Any]
+        """
+        if "/v1" not in config["endpoint_url"]:
+            config["endpoint_url"] += "/v1"
+        self._client = OpenAI(
+            base_url=config["endpoint_url"],
+            api_key="EMPTY",
+        )
+        self._model_name = config.get("model_name", "TEI")
+
+    def generate(self, text: str) -> List[str]:
+        """generate embeddings from the TEI endpoint
+
+        :param text: text to vectorize
+        :type text: str
+        :return: generated embedding vector
+        :rtype: List[str]
+        """
+        response = (
+            self._client.embeddings.create(
+                input=text,
+                model=self._model_name,
+            )
+            .data[0]
+            .embedding
         )
         return response

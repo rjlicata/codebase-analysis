@@ -10,6 +10,7 @@ dependencies = [
     "scipy==1.15.2",
     "openai==1.64.0",
     "streamlit==1.43.0",
+    "PyYAML==6.0.2",
 ]
 
 [tool.setuptools]
