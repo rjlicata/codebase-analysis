@@ -16,3 +16,19 @@ embedding:
 	--name tei_endpoint \
 	ghcr.io/huggingface/text-embeddings-inference:cpu-latest \
 	--model-id infly/inf-retriever-v1-1.5b
+
+postgres:
+	docker run \
+	--rm \
+	-d \
+	--net=host \
+	--name postgres \
+	-e POSTGRES_USER=postgres \
+	-e POSTGRES_PASSWORD=postgres \
+	-e POSTGRES_DB=codebase \
+	-p 5432:5432 \
+	-v $(DATA)/db/codebase:/var/lib/postgresql/data \
+	pgvector/pgvector:pg17
+
+enter_psql:
+	docker exec -it postgres psql -U postgres -d codebase

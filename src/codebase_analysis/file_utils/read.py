@@ -30,7 +30,7 @@ def find_funcs(path: str = None, text: str = None, indent: int = 0) -> Dict[str,
         if line.startswith(f"{spaces}def "):
             if len(current_func) > 0:
                 current_func = [item for item in current_func if item != "\n"]
-                functions[func_name] = "".join(current_func)
+                functions[func_name] = {"text": "".join(current_func)}
                 current_func = []
             func_name = line.split("def ")[1].split("(")[0]
             current_func.append(line)
@@ -39,14 +39,14 @@ def find_funcs(path: str = None, text: str = None, indent: int = 0) -> Dict[str,
         if in_func:
             if (len(line) > 0) and (line[0] != " ") and (len(re.findall(r"\w", line)) > 0):
                 current_func = [item for item in current_func if item != "\n"]
-                functions[func_name] = "".join(current_func)
+                functions[func_name] = {"text": "".join(current_func)}
                 current_func = []
                 in_func = False
             else:
                 current_func.append(line)
     if in_func:
         current_func = [item for item in current_func if item != "\n"]
-        functions[func_name] = "".join(current_func)
+        functions[func_name] = {"text": "".join(current_func)}
     return functions
 
 
@@ -92,20 +92,20 @@ def find_classes(path: str) -> Dict[str, List[str]]:
 
 if __name__ == "__main__":
     # CLASSES
-    path = "/workspace/src/codebase_analysis/llm/model.py"
-    classes = find_classes(path)
-    for k, v in classes.items():
-        print(f"======{k}======")
-        print(v["text"])
-        for k1, v1 in v["methods"].items():
-            print(k1)
-            print(v1)
-            print("--" * 20)
+    # path = "/workspace/src/codebase_analysis/llm/model.py"
+    # classes = find_classes(path)
+    # for k, v in classes.items():
+    #     print(f"======{k}======")
+    #     print(v["text"])
+    #     for k1, v1 in v["methods"].items():
+    #         print(k1)
+    #         print(v1)
+    #         print("--" * 20)
     # FUNCTIONS
-    # path = "/workspace/src/codebase_analysis/file_utils/read.py"
-    # functions = find_funcs(path)
-    # print(f"There are {len(functions)} function(s)")
-    # for k, v in functions.items():
-    #     print(k)
-    #     print(v)
-    #     print("--" * 20)
+    path = "/workspace/src/codebase_analysis/file_utils/read.py"
+    functions = find_funcs(path)
+    print(f"There are {len(functions)} function(s)")
+    for k, v in functions.items():
+        print(k)
+        print(v)
+        print("--" * 20)

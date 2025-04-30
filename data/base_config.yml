@@ -1,8 +1,15 @@
 codebase:
   path: /coding-projects/llm-sheet-analysis
+postgres:
+  name: codebase
+  user: postgres
+  password: postgres
+  host: localhost
+  port: 5432
 llm:
   model_name: llama3.2
   endpoint_url: http://host.docker.internal:11434/v1
 embeddings:
   model_name: bge-large # TEI server + OpenAI API just needs any string (Ollama needs a model name)
   endpoint_url: http://host.docker.internal:11434/v1
+  embedding_dim: 1024

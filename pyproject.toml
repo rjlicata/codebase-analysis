@@ -11,6 +11,7 @@ dependencies = [
     "openai==1.64.0",
     "streamlit==1.43.0",
     "PyYAML==6.0.2",
+    "psycopg2-binary==2.9.10",
 ]
 
 [tool.setuptools]

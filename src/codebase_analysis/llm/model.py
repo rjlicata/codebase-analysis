@@ -53,16 +53,6 @@ class ModelHandler:
             },
         ]
 
-    def _check_system_message(self, sys_msg: str) -> None:
-        """updates the system message with a user-provided one if it is different
-        than the one in the message list
-
-        :param sys_msg: system message override
-        :type sys_msg: str
-        """
-        if self._messages[0]["content"] != sys_msg:
-            self._messages[0]["content"] = sys_msg
-
     def invoke(self, user_message: str, sys_msg: str = None) -> str:
         """handles the message list and invokes the LLM
 
@@ -74,7 +64,7 @@ class ModelHandler:
         :rtype: str
         """
         if sys_msg is not None:
-            self._check_system_message(sys_msg)
+            self._messages[0]["content"] = sys_msg
         self._messages.append(
             {
                 "role": "user",
