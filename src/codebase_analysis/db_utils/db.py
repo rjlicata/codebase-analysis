@@ -232,3 +232,21 @@ class dbHandler:
                     "type": _type,
                 }
         return results
+    
+    def run_basic_query(self, query: str) -> List[Any]:
+        """query the database for similar items based on the given vector
+
+        :param table: table to query
+        :type table: str
+        :param vector: embedding vector to search for
+        :type vector: List[float]
+        :return: list of similar items
+        :rtype: List[Any]
+        """
+        try:
+            self.cursor.execute(query)
+            result = self.cursor.fetchall()
+            return result
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            return []

@@ -1,6 +1,8 @@
 import yaml
 from typing import Any, Dict, List, Tuple
 
+import numpy as np
+
 from codebase_analysis.db_utils import dbHandler
 from codebase_analysis.file_utils import find_classes, find_funcs, get_all_files
 from codebase_analysis.llm import Embeddings, ModelHandler
@@ -8,26 +10,34 @@ from codebase_analysis.llm.prompts import (
     CLASS_SUMMARIZATION_PROMPT,
     FUNCTION_SUMMARIZATION_PROMPT,
     METHOD_SUMMARIZATION_PROMPT,
+    QA_SYSTEM_PROMPT,
 )
 
 
 class Orchestrator:
     """Orchestrator class to handle the database and model interactions"""
 
-    def __init__(self, config_path: str, init: bool = True):
+    def __init__(self, config_path: str, max_context: int = 5, init: bool = True):
         """initializes Orchestrator
 
         :param config_path: path to the config file
         :type config_path: str
+        :param max_context: maximum number of summaries to provide the model for answering, defaults to 5
+        :type max_context: int, optional
         :param init: whether to initialize the database, defaults to True
         :type init: bool, optional
         """
         self._config = self._load_config(config_path)
+        self._max_context = max_context
         self._model_handler = ModelHandler(
             self._config["llm"], system_message=FUNCTION_SUMMARIZATION_PROMPT
         )
         self._embedder = Embeddings(self._config["embeddings"])
-        self._db = dbHandler(self._config["postgres"], embedding_dim=self._config["embeddings"]["embedding_dim"], init=init)
+        self._db = dbHandler(
+            self._config["postgres"],
+            embedding_dim=self._config["embeddings"]["embedding_dim"],
+            init=init,
+        )
 
     def _load_config(self, path: str) -> Dict[str, Any]:
         """loads the config file
@@ -99,21 +109,124 @@ class Orchestrator:
         return filedict
 
     def add_data(self) -> None:
+        """extract all functions, classes, and methods from the repo and add them to the database"""
         codebase = self._breakdown_repo()
         for key in codebase:
             codebase[key] = self._add_summaries(codebase[key])
             self._db.add_file(key, codebase[key])
     
+    def _order_context(self, results: Dict[str, Dict[str, Any]]) -> List[str]:
+        """orders the context to be used in the prompt
+        
+        :param results: results from the database
+        :type results: Dict[str, Dict[str, Any]]
+        :return: ordered keys
+        :rtype: List[str]
+        """
+        keys, dist = [], []
+        for k, v in results.items():
+            keys.append(k)
+            dist.append(v["cos_dist"])
+        ordered_keys = [keys[int(d)] for d in np.argsort(dist)]
+        return ordered_keys
+    
+    def _create_context_string(self, results: Dict[str, Dict[str, Any]]) -> str:
+        """creates a context string from the results
+        
+        :param results: results from the database
+        :type results: Dict[str, Dict[str, Any]]
+        :return: context string
+        :rtype: str
+        """
+        ordered_keys = self._order_context(results)
+        context = ""
+        for k in ordered_keys[:self._max_context]:
+            context += f"[{k}]: Name - {results[k]['name']}, Summary - {results[k]['summary']}\n\n"
+        return context
+    
+    def _get_filepath(self, result: Dict[str, Any]) -> Tuple[str, str]:
+        """gets the file path (and potentially parent class name) of the result
+
+        :param result: result from the database
+        :type result: Dict[str, Any]
+        :return: file path
+        :rtype: Tuple[str, str]
+        """
+        if result["type"] != "methods":
+            query = f"""SELECT files.path
+            FROM files
+            INNER JOIN {result['type']} ON {result['type']}.file_id = files.id
+            WHERE {result['type']}.id = {result['id']};
+            """
+            output = self._db.run_basic_query(query)
+            return output[0][0], None
+        else:
+            query = f"""SELECT files.path, classes.name
+            FROM files
+            INNER JOIN classes ON classes.file_id = files.id
+            INNER JOIN methods ON methods.class_id = classes.id
+            WHERE methods.id = {result['id']};
+            """
+            output = self._db.run_basic_query(query)
+            return output[0][0], output[0][1]
+
+    def _reformat(self, response: str, results: Dict[str, Dict[str, Any]]) -> str:
+        """reformats the response to clean up the in-text citations and provide the path to the code
+
+        :param response: response
+        :type response: str
+        :param results: results from the database
+        :type results: Dict[str, Dict[str, Any]]
+        :return: reformatted response
+        :rtype: str
+        """
+        citation_counter = 1
+        citation_dict = {}
+        for k in results:
+            if k in response:
+                path, class_name = self._get_filepath(results[k])
+                response = response.replace(k, str(citation_counter))
+                citation_dict[citation_counter] = {
+                    "path": path,
+                    "class_name": class_name,
+                    "name": results[k]["name"],
+                    "type": results[k]["type"],
+                }
+                citation_counter += 1
+        if len(citation_dict) > 0:
+            response += "\n\nREFERENCES:\n"
+            for k in citation_dict:
+                path = citation_dict[k]["path"]
+                class_name = citation_dict[k]["class_name"]
+                name = citation_dict[k]["name"]
+                response += f"[{k}]: {name} - (path: {path})\n"
+                if citation_dict[k]["type"] == "methods":
+                    response = response.replace(
+                        f"[{k}]: {name}",
+                        f"[{k}]: class: {class_name}.{name}",
+                    )
+            response = response[:-1]
+        for i in range(self._max_context):
+            response = response.replace(f"([{i+1}])", f"[{i+1}]")
+        return response
+
     def query(self, query: str) -> None:
         """queries the database for the given query
 
         :param query: user question
         :type query: str
         """
+        template = "CONTEXT:\n{context}\nQUESTION: {query}\nANSWER:\n"
         vec = self._embedder.generate(query)
         results = self._db.run_similarity(vec)
-        
-        return results
+        context = self._create_context_string(results)
+        response = self._model_handler.invoke(
+            template.format(context=context, query=query),
+            sys_msg=QA_SYSTEM_PROMPT,
+        )
+        self._model_handler.clear_messages()
+        response = self._reformat(response, results)
+        return response
 
 
 if __name__ == "__main__":
