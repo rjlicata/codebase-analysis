@@ -6,7 +6,14 @@ def main(config_path: str, init: bool) -> None:
     db_handler = Orchestrator(config_path=config_path, init=init)
     if init:
         db_handler.add_data()
-    db_handler.query("Is there a way to send a message to an LLM?")
+    while True:
+        user_input = input("Enter a query: ")
+        print("-" * 50)
+        if user_input.lower() == "exit":
+            break
+        response = db_handler.query(user_input)
+        print(response)
+        print("-" * 50)
 
 
 if __name__ == "__main__":
