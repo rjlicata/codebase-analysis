@@ -7,7 +7,10 @@ build_image:
 	docker build -t $(NAME) -f $(DOCKER_FILE) .
 
 bash: build_image
-	docker run --rm --net=host -it -w $(WORKING_DIR) --shm-size=10.07gb -v $(DATA):/workspace -v $(DATA)/..:/coding-projects $(NAME) bash
+	docker run --rm --net=codebase_network -it -w $(WORKING_DIR) --shm-size=10.07gb -v $(DATA):/workspace -v $(DATA)/..:/coding-projects $(NAME) bash
+
+network:
+	docker network create codebase_network
 
 embedding:
 	docker run \
@@ -21,7 +24,7 @@ postgres:
 	docker run \
 	--rm \
 	-d \
-	--net=host \
+	--net=codebase_network \
 	--name postgres \
 	-e POSTGRES_USER=postgres \
 	-e POSTGRES_PASSWORD=postgres \
@@ -32,3 +35,6 @@ postgres:
 
 enter_psql:
 	docker exec -it postgres psql -U postgres -d codebase
+
+app: build_image
+	docker run --rm  --net=codebase_network -p 8501:8501 -w $(WORKING_DIR) --shm-size=10.07gb -v $(DATA):/workspace $(NAME)

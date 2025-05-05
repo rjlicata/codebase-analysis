@@ -1,8 +1,6 @@
 from glob import glob
 from typing import List
 
-from codebase_analysis.file_utils import find_classes, find_funcs
-
 
 def get_all_files(path: str, file_type: str = ".py") -> List[str]:
     """returns all files in a directory with a specific file type

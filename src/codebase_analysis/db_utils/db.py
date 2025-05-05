@@ -70,7 +70,7 @@ class dbHandler:
             self.cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             if init:
                 self._create_tables()
-                # self.clear()
+                self.clear()
         except Exception as e:
             print(f"Error connecting to the database: {e}")
 
@@ -78,11 +78,13 @@ class dbHandler:
         """create the necessary tables in the database."""
         for table_name, create_statement in TABLES.items():
             try:
-                self.cursor.execute(create_statement.replace("VECTOR()", f"VECTOR({self._embedding_dim})"))
+                self.cursor.execute(
+                    create_statement.replace("VECTOR()", f"VECTOR({self._embedding_dim})")
+                )
                 self.conn.commit()
             except Exception as e:
                 print(f"Error creating table {table_name}: {e}")
-    
+
     def clear(self):
         """clear all tables in the database."""
         try:
@@ -92,7 +94,7 @@ class dbHandler:
         except Exception as e:
             # self.rollback()
             print("Error clearing tables:", e)
-    
+
     def _add_file(self, path: str):
         """add a row to the specified table.
 
@@ -101,15 +103,13 @@ class dbHandler:
         :param values: Comma-separated string of values to insert.
         """
         try:
-            self.cursor.execute(
-                f"INSERT INTO files (path) VALUES ('{path}') RETURNING id;"
-            )
+            self.cursor.execute(f"INSERT INTO files (path) VALUES ('{path}') RETURNING id;")
             _id = self.cursor.fetchone()[0]
             self.conn.commit()
             return _id
         except Exception as e:
             print(f"Error inserting into files: {e}")
-    
+
     def _process_functions(self, functions: Dict[str, Any], file_id: int) -> Tuple[str, str]:
         """process functions to extract columns and values for insertion.
 
@@ -129,7 +129,7 @@ class dbHandler:
                 self.conn.commit()
             except Exception as e:
                 print(f"Error inserting into files: {e}")
-    
+
     def _process_methods(self, methods: Dict[str, Any], class_id: int) -> Tuple[str, str]:
         """process functions to extract columns and values for insertion.
 
@@ -149,7 +149,7 @@ class dbHandler:
                 self.conn.commit()
             except Exception as e:
                 print(f"Error inserting into files: {e}")
-    
+
     def _process_classes(self, classes: Dict[str, Any], file_id: int) -> Tuple[str, str]:
         """process functions to extract columns and values for insertion.
 
@@ -174,7 +174,7 @@ class dbHandler:
                 )
             except Exception as e:
                 print(f"Error inserting into files: {e}")
-    
+
     def add_file(self, file_path: str, breakdown: Dict[str, Any]) -> None:
         """add a file to the database
 
@@ -186,7 +186,7 @@ class dbHandler:
         file_id = self._add_file(file_path)
         self._process_functions(breakdown["functions"], file_id)
         self._process_classes(breakdown["classes"], file_id)
-    
+
     def _query_sim(self, table: str, vector: List[float]) -> List[Any]:
         """query the database for similar items based on the given vector
 
@@ -232,7 +232,7 @@ class dbHandler:
                     "type": _type,
                 }
         return results
-    
+
     def run_basic_query(self, query: str) -> List[Any]:
         """query the database for similar items based on the given vector
 

@@ -17,11 +17,15 @@ from codebase_analysis.llm.prompts import (
 class Orchestrator:
     """Orchestrator class to handle the database and model interactions"""
 
-    def __init__(self, config_path: str, max_context: int = 5, init: bool = True):
+    def __init__(
+        self, config_path: str, repo_path: str = None, max_context: int = 5, init: bool = True
+    ):
         """initializes Orchestrator
 
         :param config_path: path to the config file
         :type config_path: str
+        :param repo_path: override for the repo path, defaults to None
+        :type repo_path: str, optional
         :param max_context: maximum number of summaries to provide the model for answering, defaults to 5
         :type max_context: int, optional
         :param init: whether to initialize the database, defaults to True
@@ -38,6 +42,8 @@ class Orchestrator:
             embedding_dim=self._config["embeddings"]["embedding_dim"],
             init=init,
         )
+        if repo_path is not None:
+            self._config["codebase"]["path"] = repo_path
 
     def _load_config(self, path: str) -> Dict[str, Any]:
         """loads the config file
@@ -114,10 +120,10 @@ class Orchestrator:
         for key in codebase:
             codebase[key] = self._add_summaries(codebase[key])
             self._db.add_file(key, codebase[key])
-    
+
     def _order_context(self, results: Dict[str, Dict[str, Any]]) -> List[str]:
         """orders the context to be used in the prompt
-        
+
         :param results: results from the database
         :type results: Dict[str, Dict[str, Any]]
         :return: ordered keys
@@ -129,10 +135,10 @@ class Orchestrator:
             dist.append(v["cos_dist"])
         ordered_keys = [keys[int(d)] for d in np.argsort(dist)]
         return ordered_keys
-    
+
     def _create_context_string(self, results: Dict[str, Dict[str, Any]]) -> str:
         """creates a context string from the results
-        
+
         :param results: results from the database
         :type results: Dict[str, Dict[str, Any]]
         :return: context string
@@ -140,10 +146,10 @@ class Orchestrator:
         """
         ordered_keys = self._order_context(results)
         context = ""
-        for k in ordered_keys[:self._max_context]:
+        for k in ordered_keys[: self._max_context]:
             context += f"[{k}]: Name - {results[k]['name']}, Summary - {results[k]['summary']}\n\n"
         return context
-    
+
     def _get_filepath(self, result: Dict[str, Any]) -> Tuple[str, str]:
         """gets the file path (and potentially parent class name) of the result
 
@@ -196,7 +202,7 @@ class Orchestrator:
         if len(citation_dict) > 0:
             response += "\n\nREFERENCES:\n"
             for k in citation_dict:
-                path = citation_dict[k]["path"]
+                path = citation_dict[k]["path"].replace("/workspace/tmp/", "")
                 class_name = citation_dict[k]["class_name"]
                 name = citation_dict[k]["name"]
                 response += f"[{k}]: {name} - (path: {path})\n"
@@ -210,11 +216,13 @@ class Orchestrator:
             response = response.replace(f"([{i+1}])", f"[{i+1}]")
         return response
 
-    def query(self, query: str) -> None:
+    def query(self, query: str) -> str:
         """queries the database for the given query
 
         :param query: user question
         :type query: str
+        :return: response from the model
+        :rtype: str
         """
         template = "CONTEXT:\n{context}\nQUESTION: {query}\nANSWER:\n"
         vec = self._embedder.generate(query)
