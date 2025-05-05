@@ -12,12 +12,12 @@ Current functionality includes:
 - Code summarization
 - Summary embedding
 - Vector-based retrieval
+- LLM question answering
+- In-text citations
+- Streamlit app
 
 ## To Do
 
 Still waiting to be completed:
 
-- LLM question answering
-- In-text citations
-- Streamlit app
 - Full documentation
