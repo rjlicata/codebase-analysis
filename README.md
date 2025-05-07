@@ -46,13 +46,13 @@ You can see the text change on the main section, the chat bar appeared, and ther
 
 I tested this with one of my other repos: [LLM Sheet Analysis](https://github.com/rjlicata/llm-sheet-analysis) and have some samples below. The repo is for another Streamlit app to allow a user to ask questions about spreadsheet data using a code-writing LLM agent. My first question was about the UI component.
 
-<img src="assets/ui-question.png" alt="UI Question" width="400"/>
+<img src="assets/ui-question.png" alt="UI Question" width="600"/>
 
 When I asked the question, it was vectorized and the top 5 results were retrieved from the PostgreSQL database. They were then fed back to the LLM for it to answer the question. You can see that it cited the functions that it used to get the information.
 
 My next question was about the LLM used for that repo.
 
-<img src="assets/llm-question.png" alt="LLM Question" width="400"/>
+<img src="assets/llm-question.png" alt="LLM Question" width="600"/>
 
 Here, it's a similar result. It used a class to answer the question and even described the various methods.
 
