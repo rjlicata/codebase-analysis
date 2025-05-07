@@ -21,3 +21,11 @@ Current functionality includes:
 Still waiting to be completed:
 
 - Full documentation
+
+![](assets/base.png)
+
+![](assets/repo-loaded.png)
+
+![](assets/ui-question.png)
+
+![](assets/llm-question.png)

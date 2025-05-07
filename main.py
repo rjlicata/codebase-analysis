@@ -12,9 +12,7 @@ def main():
     subheader.subheader("The chat session begins once select a GitHub URL.")
     # define sidebar options
     st.sidebar.title("Enter a GitHub URL")
-    st.session_state.repo_name = st.sidebar.text_input(
-        "GitHub URL:", "https://github.com/rjlicata/json-output-inspector"
-    )
+    st.session_state.repo_name = st.sidebar.text_input("GitHub URL:")
 
     if "check" not in st.session_state:
         st.session_state.check = False
@@ -37,7 +35,9 @@ def main():
                 repo_path=st.session_state.repo_path,
                 init=True,
             )
-            st.session_state.orch.add_data()
+            description, codebase = st.session_state.orch.get_stats()
+            st.sidebar.text(description)
+            st.session_state.orch.add_data(codebase)
             st.session_state.repo_loaded = True
 
         if st.session_state.get("repo_loaded", False):

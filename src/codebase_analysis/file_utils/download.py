@@ -12,7 +12,7 @@ def download_repo(repo_url: str) -> None:
     # check if the repo already exists
     try:
         git.Repo(f"/workspace/tmp/{repo_name}")
-    except git.exc.InvalidGitRepositoryError:
+    except:
         git.Repo.clone_from(repo_url, f"/workspace/tmp/{repo_name}")
     return f"/workspace/tmp/{repo_name}"
 

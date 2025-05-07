@@ -1,5 +1,5 @@
 codebase:
-  path: /coding-projects/llm-sheet-analysis
+  path: # should be left empty for using the Streamlit app
 postgres:
   name: codebase
   user: postgres

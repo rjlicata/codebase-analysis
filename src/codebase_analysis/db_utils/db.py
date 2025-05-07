@@ -57,7 +57,12 @@ class dbHandler:
         self.connect(init=init)
 
     def connect(self, init: bool):
-        """establish a connection to the PostgreSQL database."""
+        """establish a connection to the PostgreSQL database
+
+        :param init: whether to initialize/clear the database
+        :type init: bool
+        :raises Exception: if there is an error connecting to the database
+        """
         try:
             self.conn = psycopg2.connect(
                 dbname=self.config["name"],
@@ -95,12 +100,13 @@ class dbHandler:
             # self.rollback()
             print("Error clearing tables:", e)
 
-    def _add_file(self, path: str):
-        """add a row to the specified table.
+    def _add_file(self, path: str) -> int:
+        """add a row to the files table
 
-        :param table: Name of the table to insert into.
-        :param columns: Comma-separated string of column names.
-        :param values: Comma-separated string of values to insert.
+        :param path: path of the file
+        :type path: str
+        :return: id of the inserted file
+        :rtype: int
         """
         try:
             self.cursor.execute(f"INSERT INTO files (path) VALUES ('{path}') RETURNING id;")
@@ -110,15 +116,13 @@ class dbHandler:
         except Exception as e:
             print(f"Error inserting into files: {e}")
 
-    def _process_functions(self, functions: Dict[str, Any], file_id: int) -> Tuple[str, str]:
+    def _process_functions(self, functions: Dict[str, Any], file_id: int) -> None:
         """process functions to extract columns and values for insertion.
 
         :param functions: functions with their attributes
         :type functions: Dict[str, Any]
         :param file_id: id of the file to which the functions belong
         :type file_id: int
-        :return: columns and values as strings for SQL insertion
-        :rtype: Tuple[str, str]
         """
         for func, attrs in functions.items():
             try:
@@ -130,15 +134,13 @@ class dbHandler:
             except Exception as e:
                 print(f"Error inserting into files: {e}")
 
-    def _process_methods(self, methods: Dict[str, Any], class_id: int) -> Tuple[str, str]:
+    def _process_methods(self, methods: Dict[str, Any], class_id: int) -> None:
         """process functions to extract columns and values for insertion.
 
-        :param functions: functions with their attributes
-        :type functions: Dict[str, Any]
+        :param methods: methods with their attributes
+        :type methods: Dict[str, Any]
         :param class_id: id of the class to which the functions belong
         :type class_id: int
-        :return: columns and values as strings for SQL insertion
-        :rtype: Tuple[str, str]
         """
         for method, attrs in methods.items():
             try:
@@ -150,15 +152,13 @@ class dbHandler:
             except Exception as e:
                 print(f"Error inserting into files: {e}")
 
-    def _process_classes(self, classes: Dict[str, Any], file_id: int) -> Tuple[str, str]:
+    def _process_classes(self, classes: Dict[str, Any], file_id: int) -> None:
         """process functions to extract columns and values for insertion.
 
-        :param functions: functions with their attributes
-        :type functions: Dict[str, Any]
+        :param classes: classes with their attributes
+        :type classes: Dict[str, Any]
         :param file_id: id of the file to which the functions belong
         :type file_id: int
-        :return: columns and values as strings for SQL insertion
-        :rtype: Tuple[str, str]
         """
         for _class, attrs in classes.items():
             try:
