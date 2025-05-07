@@ -20,7 +20,7 @@ def main():
     if st.sidebar.button("Begin Chat"):
         st.session_state.check = True
 
-    # once file is uploaded, doownload the repo and process it
+    # once URL is entered, download the repo and process it
     if st.session_state.check:
         # update instructions
         subheader.subheader("Processing the repository. This may take a few minutes.")
