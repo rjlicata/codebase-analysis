@@ -17,11 +17,15 @@ from codebase_analysis.llm.prompts import (
 class Orchestrator:
     """Orchestrator class to handle the database and model interactions"""
 
-    def __init__(self, config_path: str, max_context: int = 5, init: bool = True):
+    def __init__(
+        self, config_path: str, repo_path: str = None, max_context: int = 5, init: bool = True
+    ):
         """initializes Orchestrator
 
         :param config_path: path to the config file
         :type config_path: str
+        :param repo_path: override for the repo path, defaults to None
+        :type repo_path: str, optional
         :param max_context: maximum number of summaries to provide the model for answering, defaults to 5
         :type max_context: int, optional
         :param init: whether to initialize the database, defaults to True
@@ -38,6 +42,8 @@ class Orchestrator:
             embedding_dim=self._config["embeddings"]["embedding_dim"],
             init=init,
         )
+        if repo_path is not None:
+            self._config["codebase"]["path"] = repo_path
 
     def _load_config(self, path: str) -> Dict[str, Any]:
         """loads the config file
@@ -51,7 +57,12 @@ class Orchestrator:
             config = yaml.safe_load(f)
         return config
 
-    def _breakdown_repo(self) -> None:
+    def _breakdown_repo(self) -> Dict[str, Any]:
+        """breaks down the repo into functions, classes, and methods
+
+        :return: breakdown of the repo
+        :rtype: Dict[str, Any]
+        """
         files = get_all_files(
             path=self._config["codebase"]["path"],
             file_type=".py",
@@ -63,18 +74,61 @@ class Orchestrator:
             codebase[file]["functions"] = find_funcs(file)
         return codebase
 
+    def get_stats(self) -> Tuple[str, Dict[str, Any]]:
+        """performs the repo breakdown and returns the stats and breakdown
+
+        :return: stats and breakdown of the repo
+        :rtype: Tuple[str, Dict[str, Any]]
+        """
+        breakdown = self._breakdown_repo()
+        stats = {"files": 0, "functions": 0, "classes": 0, "methods": 0}
+        for file in breakdown:
+            stats["files"] += 1
+            stats["functions"] += len(breakdown[file]["functions"])
+            stats["classes"] += len(breakdown[file]["classes"])
+            for class_ in breakdown[file]["classes"]:
+                stats["methods"] += len(breakdown[file]["classes"][class_]["methods"])
+        description = "The codebase contains the following:\n"
+        description += f"- {stats['files']} files\n"
+        description += f"- {stats['functions']} functions\n"
+        description += f"- {stats['classes']} classes\n"
+        description += f"- {stats['methods']} methods\n"
+        return description, breakdown
+
+    def _generate_embedding(self, text: str) -> List[float]:
+        """generates an embedding for the given text
+
+        :param text: text to generate embedding for
+        :type text: str
+        :return: embedding
+        :rtype: List[float]
+        """
+        embedding = [0.0] * self._config["embeddings"]["embedding_dim"]
+        done = False
+        count = 0
+        while (not done) or count == 3:
+            try:
+                embedding = self._embedder.generate(text)
+                done = True
+            except Exception as e:
+                print(f"Error generating embedding: {e}")
+                count += 1
+        return embedding
+
     def _get_summary_and_embedding(self, code: str, sys_msg: str) -> Tuple[str, List[float]]:
         """gets the summary and embedding of the code
 
         :param code: code to get the summary and embedding of
         :type code: str
+        :param sys_msg: system message to use for the model
+        :type sys_msg: str
         :return: summary and embedding
         :rtype: Tuple[str, List[float]]
         """
         template = "INPUT:\n```\n{code}\n```\nSUMMARY:\n"
         summary = self._model_handler.invoke(template.format(code=code), sys_msg=sys_msg)
         self._model_handler.clear_messages()
-        embedding = self._embedder.generate(summary)
+        embedding = self._generate_embedding(summary)
         return summary, embedding
 
     def _add_summaries(self, filedict: Dict[str, str]) -> Dict[str, str]:
@@ -82,7 +136,7 @@ class Orchestrator:
 
         :param filedict: dictionary of files
         :type filedict: Dict[str, str]
-        :return: dictionary of files with summaries
+        :return: dictionary of files with summaries and embeddings
         :rtype: Dict[str, str]
         """
         for funcname in filedict["functions"]:
@@ -108,16 +162,19 @@ class Orchestrator:
                 filedict["classes"][classname]["methods"][methodname]["embedding"] = embedding
         return filedict
 
-    def add_data(self) -> None:
-        """extract all functions, classes, and methods from the repo and add them to the database"""
-        codebase = self._breakdown_repo()
+    def add_data(self, codebase: Dict[str, Any]) -> None:
+        """add all files, function, classes, and methods to the database
+
+        :param codebase: codebase breakdown to add to the db
+        :type codebase: Dict[str, Any]
+        """
         for key in codebase:
             codebase[key] = self._add_summaries(codebase[key])
             self._db.add_file(key, codebase[key])
-    
+
     def _order_context(self, results: Dict[str, Dict[str, Any]]) -> List[str]:
         """orders the context to be used in the prompt
-        
+
         :param results: results from the database
         :type results: Dict[str, Dict[str, Any]]
         :return: ordered keys
@@ -129,10 +186,10 @@ class Orchestrator:
             dist.append(v["cos_dist"])
         ordered_keys = [keys[int(d)] for d in np.argsort(dist)]
         return ordered_keys
-    
+
     def _create_context_string(self, results: Dict[str, Dict[str, Any]]) -> str:
         """creates a context string from the results
-        
+
         :param results: results from the database
         :type results: Dict[str, Dict[str, Any]]
         :return: context string
@@ -140,10 +197,10 @@ class Orchestrator:
         """
         ordered_keys = self._order_context(results)
         context = ""
-        for k in ordered_keys[:self._max_context]:
+        for k in ordered_keys[: self._max_context]:
             context += f"[{k}]: Name - {results[k]['name']}, Summary - {results[k]['summary']}\n\n"
         return context
-    
+
     def _get_filepath(self, result: Dict[str, Any]) -> Tuple[str, str]:
         """gets the file path (and potentially parent class name) of the result
 
@@ -196,7 +253,7 @@ class Orchestrator:
         if len(citation_dict) > 0:
             response += "\n\nREFERENCES:\n"
             for k in citation_dict:
-                path = citation_dict[k]["path"]
+                path = citation_dict[k]["path"].replace("/workspace/tmp/", "")
                 class_name = citation_dict[k]["class_name"]
                 name = citation_dict[k]["name"]
                 response += f"[{k}]: {name} - (path: {path})\n"
@@ -210,14 +267,16 @@ class Orchestrator:
             response = response.replace(f"([{i+1}])", f"[{i+1}]")
         return response
 
-    def query(self, query: str) -> None:
+    def query(self, query: str) -> str:
         """queries the database for the given query
 
         :param query: user question
         :type query: str
+        :return: response from the model
+        :rtype: str
         """
         template = "CONTEXT:\n{context}\nQUESTION: {query}\nANSWER:\n"
-        vec = self._embedder.generate(query)
+        vec = self._generate_embedding(query)
         results = self._db.run_similarity(vec)
         context = self._create_context_string(results)
         response = self._model_handler.invoke(
@@ -227,9 +286,3 @@ class Orchestrator:
         self._model_handler.clear_messages()
         response = self._reformat(response, results)
         return response
-
-
-if __name__ == "__main__":
-    db_handler = Orchestrator(config_path="/workspace/data/base_config.yml")
-    codebase = db_handler.add_data()
-    print()

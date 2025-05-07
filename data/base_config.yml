@@ -1,10 +1,10 @@
 codebase:
-  path: /coding-projects/llm-sheet-analysis
+  path: # should be left empty for using the Streamlit app
 postgres:
   name: codebase
   user: postgres
   password: postgres
-  host: localhost
+  host: postgres
   port: 5432
 llm:
   model_name: llama3.2

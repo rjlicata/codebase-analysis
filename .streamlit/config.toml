@@ -1,0 +1,7 @@
+[server]
+enableCORS = false
+headless = true
+runOnSave = false
+
+[cache]
+persist = true
