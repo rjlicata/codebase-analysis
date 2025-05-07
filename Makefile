@@ -6,9 +6,6 @@ WORKING_DIR=/workspace
 build_image:
 	docker build -t $(NAME) -f $(DOCKER_FILE) .
 
-bash: build_image
-	docker run --rm --net=codebase_network -it -w $(WORKING_DIR) --shm-size=10.07gb -v $(DATA):/workspace -v $(DATA)/..:/coding-projects $(NAME) bash
-
 network:
 	docker network create codebase_network
 
